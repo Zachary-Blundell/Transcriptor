@@ -1,6 +1,7 @@
 # Transcriptor Script
 
 `transcriptor.py` is a Python script for transcribing audio files using the Whisper model. It supports multiple model sizes and offers options for both multilingual and English-only transcriptions.
+More info on openai-whisper can be found [here (pypi.org)](https://pypi.org/project/openai-whisper/) and [here (github)](https://github.com/openai/whisper)
 
 Valid audio extensions: '.mp3', '.m4a', '.wav', '.flac', '.ogg', '.aac'
 
