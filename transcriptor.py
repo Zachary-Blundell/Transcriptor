@@ -5,6 +5,8 @@ import textwrap
 import whisper
 import shutil
 
+valid_audio_extensions = ['.mp3', '.m4a',
+                          '.wav', '.flac', '.ogg', '.aac', '.opus']
 # Constants
 MODEL_NAMES = [
     "tiny", "base", "small", "medium", "large", "turbo",
@@ -41,8 +43,6 @@ OPTIONS_TEXT = textwrap.dedent("""
         12. Plus d'informations (Français)
     """)
 
-valid_audio_extensions = ['.mp3', '.m4a',
-                          '.wav', '.flac', '.ogg', '.aac', '.opus']
 
 # Functions
 
