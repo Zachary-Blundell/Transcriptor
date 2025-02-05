@@ -25,8 +25,9 @@ You only need to install the `whisper` package separately because it's not inclu
    ```bash
 
    pip install -U openai-whisper
-   sudo pacman -S python-openai-whisper
 
+   # on Arch Linux
+   sudo pacman -S python-openai-whisper
    ```
 
 3. Ensure the command-line tool `ffmpeg` is installed on your system, which is available from most package managers:
