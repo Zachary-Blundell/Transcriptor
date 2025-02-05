@@ -203,8 +203,7 @@ if __name__ == "__main__":
         text_file_path = os.path.join(audio_dir, text_file_name)
 
         if dry_run:
-            print(center_text(
-                f"Dry run: Would process {audio_file_name} into {text_file_name}"))
+            print(f"Dry run: Would process {audio_file_name} into {text_file_name}")
             continue
 
         print(center_text(
