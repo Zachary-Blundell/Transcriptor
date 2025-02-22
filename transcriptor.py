@@ -4,6 +4,8 @@ import time
 import textwrap
 import whisper
 import shutil
+import warnings
+import argparse
 
 # Constants{{{
 MODEL_NAMES = [
@@ -102,7 +104,7 @@ def write_txt_file_without_timestamps(transcription, text_file_path):
    with open(text_file_path, 'w', encoding='utf-8') as f:
        for segment in transcription["segments"]:
            clean_text = segment['text'].lstrip()
-           f.write(f"{clean_text}\n")
+           f.write(f"{clean_text}")
 
 def clear_terminal():
     """Clear the terminal screen."""
@@ -208,26 +210,19 @@ def get_user_model_choice():
             print(
                 "Invalid input, please enter a number. / Entrée invalide, veuillez entrer un numéro.")# }}}
 
-"""Main script"""# {{{
+# """Main script"""# {{{
 if __name__ == "__main__":
-    dry_run = False
-    audio_files = []
+    parser = argparse.ArgumentParser(description="Transcribe audio files using Whisper models.")
+    parser.add_argument('audio_files', nargs='+', help='Audio file(s) to transcribe')
+    parser.add_argument('--dry-run', action='store_true', help='Simulate processing without writing files')
+    parser.add_argument('--model', choices=MODEL_NAMES, 
+                        help='Specify the Whisper model to use (by name)')
+    parser.add_argument('--timestamps', choices=['y', 'n', 'b'],
+                        help='Timestamp option: y=timestamps only, n=no timestamps, b=both')
+    args = parser.parse_args()
 
-    # Parse arguments
-    if len(sys.argv) < 2:
-        print(
-            "Usage: python transcriptor.py <audio_file1> [audio_file2 ...] [--dry-run]")
-        sys.exit(1)
-
-    if sys.argv[-1] == "--dry-run":
-        dry_run = True
-        audio_files = sys.argv[1:-1]
-    else:
-        audio_files = sys.argv[1:]
-
-    if not audio_files:
-        print("Error: No audio files provided.")
-        sys.exit(1)
+    dry_run = args.dry_run
+    audio_files = args.audio_files
 
     # Validate all files
     all_errors = []
@@ -241,28 +236,45 @@ if __name__ == "__main__":
             print(error)
         sys.exit(1)
 
-    model_choice = get_user_model_choice()
-    print(center_text(
-        f"The {model_choice} model was chosen / Le modèle {model_choice} a été choisi."))
+    # Determine model choice
+    if args.model:
+        model_choice = args.model
+    else:
+        model_choice = get_user_model_choice()
+    print(f"The {model_choice} model was chosen / Le modèle {model_choice} a été choisi.")
 
-    timestamp_choice = get_user_timestamp_choice()
+    # Determine timestamp choice
+    if args.timestamps is not None:
+        timestamp_choice_letter = args.timestamps
+        if timestamp_choice_letter == 'y':
+            timestamp_choice = 0
+        elif timestamp_choice_letter == 'n':
+            timestamp_choice = 1
+        else: # timestamp_choice_letter == 'b'
+            timestamp_choice = 2
+    else:
+        timestamp_choice = get_user_timestamp_choice()
     timestamp_txt_list = TIMESTAMP_NAMES[timestamp_choice].split(' / ')
     print(f"{timestamp_txt_list[0]} was chosen / {timestamp_txt_list[1]} a été choisi.")
 
     if not dry_run:
         print("Loading the model / Chargement du modèle")
         model = whisper.load_model(model_choice)
+        # Suppress the FP16 warning
+        warnings.filterwarnings("ignore", 
+                                message="FP16 is not supported on CPU; using FP32 instead",
+                                category=UserWarning)
 
     for audio_file_path in audio_files:
         audio_dir = os.path.dirname(audio_file_path)
         audio_file_name = os.path.basename(audio_file_path)
-	
+    
         text_file_name = replace_extension_without_timestamps(audio_file_name)
         text_file_name_timestamp = replace_extension_timestamps(audio_file_name)
         
         text_file_path = os.path.join(audio_dir, text_file_name)
-        text_file_with_timestamps_path = os.path.join(audio_dir, text_file_name_timestamp)  # Fixed variable name
-        
+        text_file_with_timestamps_path = os.path.join(audio_dir, text_file_name_timestamp)
+
         if dry_run:
             print(f"\nDry run: Processing / Traitement du {audio_file_name}")
             if timestamp_choice == 0:
@@ -301,5 +313,4 @@ if __name__ == "__main__":
                 f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {text_file_with_timestamps_path}"))
             write_txt_file_without_timestamps(transcription, text_file_path)
             print(center_text(
-                f"Transcription saved to / Transcription enregistrée dans {text_file_path}"))
-# }}}
+                f"Transcription saved to / Transcription enregistrée dans {text_file_path}"))# }}}
