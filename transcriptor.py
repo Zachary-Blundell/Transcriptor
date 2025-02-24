@@ -10,15 +10,22 @@ import datetime
 
 
 """Constants"""  # {{{
+
 MODEL_NAMES = [
     "tiny", "base", "small", "medium", "large", "turbo",
     "tiny.en", "base.en", "small.en", "medium.en"
 ]
-TIMESTAMP_NAMES = [
-    "With timestamps / Avec horodatages",
-    "Without timestamps / Sans horodatages",
-    "Create both a file with and without timestamps / Créer les deux fichier avec and sans horodatages"
-]
+TIMESTAMP_NAMES = {
+    'y': "With timestamps / Avec horodatages",
+    'n': "Without timestamps / Sans horodatages",
+    'b': "Create both a file with and without timestamps / Créer les deux fichier avec and sans horodatages"
+}
+
+TIMESTAMP_ACTIONS = {
+    'y': "timestamps",
+    'n': "no_timestamps",
+    'b': "both"
+}
 INFO_TEXTS = {
     "en1": textwrap.fill("""
         There are six model sizes, four with English-only versions, offering speed and accuracy tradeoffs. Below are the names of the available models and their approximate memory requirements and inference speed relative to the large model. The relative speeds below are measured by transcribing English speech on an A100, and the real-world speed may vary significantly depending on many factors including the language, the speaking speed, and the available hardware.
@@ -36,10 +43,10 @@ INFO_TEXTS = {
 
 TIMESTAMP_OPTIONS_TEXT = textwrap.dedent(f"""
    Please choose if you would like to add timestamps / Veuillez indiquer si vous souhaitez ajouter des horodatages :
-        0. Exit / Sortie
-        1. {TIMESTAMP_NAMES[0]}
-        2. {TIMESTAMP_NAMES[1]}
-        3. {TIMESTAMP_NAMES[2]}
+        q. Exit / Sortie
+        y. {TIMESTAMP_NAMES[0]}
+        n. {TIMESTAMP_NAMES[1]}
+        b. {TIMESTAMP_NAMES[2]}
     """)
 
 MODEL_OPTIONS_TEXT = textwrap.dedent("""
@@ -213,22 +220,23 @@ def display_timestamp_options():
 def get_user_timestamp_choice():
     """Get and return the user's timestamp choice."""
     while True:
-        try:
-            clear_terminal()
-            display_timestamp_options()
-            choice = int(input(
-                "Enter the number of your choice (1-3) / Entrez le numéro de votre choix (1-3): "))
-            if 0 <= choice <= 3:
-                if choice == 0:
-                    print("Exiting")
-                    sys.exit(1)
-                else:
-                    return choice - 1
-            else:
-                print("Invalid choice, please select a number between 1 and 3. / Choix invalide, veuillez sélectionner un numéro entre 1 et 3.")
-        except ValueError:
-            print(
-                "Invalid input, please enter a number. / Entrée invalide, veuillez entrer un numéro.")
+        clear_terminal()
+        display_timestamp_options()
+
+        options_string = ', '.join(TIMESTAMP_ACTIONS.keys()) + ', q'
+
+        choice = input(
+            f"Enter your choice / Entrez votre choix ({options_string}): ")
+
+        if choice == 'q':
+            print("Exiting / Sortie")
+            sys.exit(1)
+        if choice in TIMESTAMP_ACTIONS.keys():
+            return choice
+        else:
+            print(f"\nInvalid choice, please select between {
+                  options_string}. / Choix invalide, veuillez sélectionner entre {options_string}.")
+            time.sleep(3)
 
 
 def get_user_model_choice():
@@ -262,14 +270,7 @@ def get_user_model_choice():
                 "Invalid input, please enter a number. / Entrée invalide, veuillez entrer un numéro.")
 
 
-# }}}
-"""Main script"""  # {{{
-
-
-if __name__ == "__main__":
-    # Get a new log file path each time the script runs
-    log_filepath = get_log_filepath()
-
+def argument_parser():
     parser = argparse.ArgumentParser(
         description="Transcribe audio files using Whisper models.")
     parser.add_argument('audio_files', nargs='+',
@@ -282,13 +283,26 @@ if __name__ == "__main__":
                         help='Timestamp option: y=timestamps only, n=no timestamps, b=both')
     parser.add_argument('-l, --log', action='store_true',
                         help='Used to enable logging info to a log file.')
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+# }}}
+"""Main script"""  # {{{
+
+
+if __name__ == "__main__":
+    # Get a new log file path each time the script runs
+    log_filepath = get_log_filepath()
+
+    # Get the command arguments
+    args = argument_parser()
+
+    audio_files = args.audio_files
     dry_run = args.dry_run
+
     logsOn = False
     if not dry_run:
         logsOn = args.log
-    audio_files = args.audio_files
 
     # Validate all files
     all_errors = validate_audio_files(audio_files, log_filepath)
@@ -308,15 +322,9 @@ if __name__ == "__main__":
     # Determine timestamp choice
     if args.timestamps is not None:
         timestamp_choice_letter = args.timestamps
-        if timestamp_choice_letter == 'y':
-            timestamp_choice = 0
-        elif timestamp_choice_letter == 'n':
-            timestamp_choice = 1
-        else:  # timestamp_choice_letter == 'b'
-            timestamp_choice = 2
     else:
-        timestamp_choice = get_user_timestamp_choice()
-    timestamp_txt_list = TIMESTAMP_NAMES[timestamp_choice].split(' / ')
+        timestamp_choice_letter = get_user_timestamp_choice()
+    timestamp_txt_list = TIMESTAMP_NAMES[timestamp_choice_letter].split(' / ')
     print_and_log(
         f"{timestamp_txt_list[0]} was chosen / {timestamp_txt_list[1]} a été choisi.", log_filepath)
 
@@ -340,18 +348,17 @@ if __name__ == "__main__":
         text_file_with_timestamps_path = os.path.join(
             audio_dir, text_file_name_timestamp)
 
+        timestamp_choice = TIMESTAMP_ACTIONS[timestamp_choice_letter]
+
         if dry_run:
             print(f"\nDry run: Processing / Traitement du {audio_file_name}")
-            if timestamp_choice == 0:
+
+            if timestamp_choice in ("timestamps", "both"):
                 print(
-                    f"Would create timestamped file / Créerait un fichier horodaté : {text_file_name_timestamp}")
-            elif timestamp_choice == 1:
+                    f"Would create timestamped file / Créerait un fichier horodaté : text_file_name_timestamp")
+            if timestamp_choice in ("no_timestamps", "both"):
                 print(
-                    f"Would create simple transcript / Créerait un fichier simple : {text_file_name}")
-            elif timestamp_choice == 2:
-                print(f"Would create both files / Créerait les deux fichiers :")
-                print(f"- {text_file_name}")
-                print(f"- {text_file_name_timestamp}")
+                    f"Would create simple transcript / Créerait un fichier simple : text_file_name")
             continue  # Skip actual processing for dry-run
 
         print_and_log(f"\nProcessing {
@@ -366,20 +373,12 @@ if __name__ == "__main__":
         print_and_log(
             f"Transcription finished in / Transcription terminée en {convert(duration)}", log_filepath)
 
-        if timestamp_choice == 0:
+        if timestamp_choice in ("timestamps", "both"):
             write_txt_file_with_timestamps(
                 transcription, text_file_with_timestamps_path)
             print_and_log(f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {
                           text_file_with_timestamps_path}\n", log_filepath)
-        elif timestamp_choice == 1:
-            write_txt_file_without_timestamps(transcription, text_file_path)
-            print_and_log(
-                f"Transcription saved to / Transcription enregistrée dans {text_file_path}\n", log_filepath)
-        else:
-            write_txt_file_with_timestamps(
-                transcription, text_file_with_timestamps_path)
-            print_and_log(
-                f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {text_file_with_timestamps_path}", log_filepath)
+        if timestamp_choice in ("no_timestamps", "both"):
             write_txt_file_without_timestamps(transcription, text_file_path)
             print_and_log(
                 f"Transcription saved to / Transcription enregistrée dans {text_file_path}\n", log_filepath)
