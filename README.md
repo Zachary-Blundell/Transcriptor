@@ -25,7 +25,6 @@ You only need to install the `whisper` package separately because it's not inclu
 2. Ensure you have the necessary Python version and install the required packages:
 
    ```bash
-
    pip install -U openai-whisper
 
    # on Arch Linux
