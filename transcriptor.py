@@ -4,13 +4,18 @@ import time
 import textwrap
 import whisper
 import shutil
+import warnings
+import argparse
 
-valid_audio_extensions = ['.mp3', '.m4a',
-                          '.wav', '.flac', '.ogg', '.aac', '.opus']
-# Constants
+"""Constants"""  # {{{
 MODEL_NAMES = [
     "tiny", "base", "small", "medium", "large", "turbo",
     "tiny.en", "base.en", "small.en", "medium.en"
+]
+TIMESTAMP_NAMES = [
+    "With timestamps / Avec horodatages",
+    "Without timestamps / Sans horodatages",
+    "Create both a file with and without timestamps / Créer les deux fichier avec and sans horodatages"
 ]
 INFO_TEXTS = {
     "en1": textwrap.fill("""
@@ -26,7 +31,16 @@ INFO_TEXTS = {
         Les modèles .en pour les applications en anglais uniquement tendent à être plus performants, en particulier pour les modèles tiny.en et base.en. Nous avons observé que la différence devient moins significative pour les modèles small.en et medium.en. En outre, le modèle turbo est une version optimisée de large-v3 qui offre une vitesse de transcription plus rapide avec une dégradation minimale de la précision.
         """, width=50, initial_indent="  ", subsequent_indent="     ")
 }
-OPTIONS_TEXT = textwrap.dedent("""
+
+TIMESTAMP_OPTIONS_TEXT = textwrap.dedent(f"""
+   Please choose if you would like to add timestamps / Veuillez indiquer si vous souhaitez ajouter des horodatages :
+        0. Exit / Sortie
+        1. {TIMESTAMP_NAMES[0]}
+        2. {TIMESTAMP_NAMES[1]}
+        3. {TIMESTAMP_NAMES[2]}
+    """)
+
+MODEL_OPTIONS_TEXT = textwrap.dedent("""
     Please choose a model / Veuillez choisir un modèle :
         0. Exit / Sortie
         1. tiny
@@ -43,8 +57,10 @@ OPTIONS_TEXT = textwrap.dedent("""
         12. Plus d'informations (Français)
     """)
 
-
-# Functions
+valid_audio_extensions = ['.mp3', '.m4a',
+                          '.wav', '.flac', '.ogg', '.aac', '.opus']
+# }}}
+"""Functions"""  # {{{
 
 
 def check_audio_file(file_path):
@@ -67,10 +83,31 @@ def check_audio_file(file_path):
     return None
 
 
-def replace_extension(file_name):
+def replace_extension_without_timestamps(file_name):
     """Replace the audio file extension with .txt."""
     root, ext = os.path.splitext(file_name)
     return root + '.txt'
+
+
+def replace_extension_timestamps(file_name):
+    """Replace the audio file extension with .txt."""
+    root, ext = os.path.splitext(file_name)
+    return root + '_timestamps.txt'
+
+
+def write_txt_file_with_timestamps(transcription, text_file_path):
+    with open(text_file_path, 'w', encoding='utf-8') as f:
+        for segment in transcription["segments"]:
+            start = convert(segment['start'])
+            end = convert(segment['end'])
+            f.write(f"{start} - {end}:{segment['text']}\n")
+
+
+def write_txt_file_without_timestamps(transcription, text_file_path):
+    with open(text_file_path, 'w', encoding='utf-8') as f:
+        for segment in transcription["segments"]:
+            clean_text = segment['text'].lstrip()
+            f.write(f"{clean_text}")
 
 
 def clear_terminal():
@@ -118,18 +155,44 @@ def display_model_table():
         print("-" * 80)
 
 
-def display_options():
+def display_model_options():
     """Display the model options and info texts."""
     display_model_table()
-    print(center_text(OPTIONS_TEXT))
+    print(center_text(MODEL_OPTIONS_TEXT))
 
 
-def get_user_choice():
+def display_timestamp_options():
+    """Display the timestamp options and info texts."""
+    print(center_text(TIMESTAMP_OPTIONS_TEXT))
+
+
+def get_user_timestamp_choice():
+    """Get and return the user's timestamp choice."""
+    while True:
+        try:
+            clear_terminal()
+            display_timestamp_options()
+            choice = int(input(
+                "Enter the number of your choice (1-3) / Entrez le numéro de votre choix (1-3): "))
+            if 0 <= choice <= 3:
+                if choice == 0:
+                    print("Exiting")
+                    sys.exit(1)
+                else:
+                    return choice - 1
+            else:
+                print("Invalid choice, please select a number between 1 and 3. / Choix invalide, veuillez sélectionner un numéro entre 1 et 3.")
+        except ValueError:
+            print(
+                "Invalid input, please enter a number. / Entrée invalide, veuillez entrer un numéro.")
+
+
+def get_user_model_choice():
     """Get and return the user's model choice."""
     while True:
         try:
             clear_terminal()
-            display_options()
+            display_model_options()
             choice = int(input(
                 "Enter the number of your choice (1-12) / Entrez le numéro de votre choix (1-12): "))
             if 0 <= choice <= 12:
@@ -155,26 +218,25 @@ def get_user_choice():
                 "Invalid input, please enter a number. / Entrée invalide, veuillez entrer un numéro.")
 
 
-"""Main script"""
+# }}}
+"""Main script"""  # {{{
+
+
 if __name__ == "__main__":
-    dry_run = False
-    audio_files = []
+    parser = argparse.ArgumentParser(
+        description="Transcribe audio files using Whisper models.")
+    parser.add_argument('audio_files', nargs='+',
+                        help='Audio file(s) to transcribe')
+    parser.add_argument('--dry-run', action='store_true',
+                        help='Simulate processing without writing files')
+    parser.add_argument('--model', choices=MODEL_NAMES,
+                        help='Specify the Whisper model to use (by name)')
+    parser.add_argument('--timestamps', choices=['y', 'n', 'b'],
+                        help='Timestamp option: y=timestamps only, n=no timestamps, b=both')
+    args = parser.parse_args()
 
-    # Parse arguments
-    if len(sys.argv) < 2:
-        print(
-            "Usage: python transcriptor.py <audio_file1> [audio_file2 ...] [--dry-run]")
-        sys.exit(1)
-
-    if sys.argv[-1] == "--dry-run":
-        dry_run = True
-        audio_files = sys.argv[1:-1]
-    else:
-        audio_files = sys.argv[1:]
-
-    if not audio_files:
-        print("Error: No audio files provided.")
-        sys.exit(1)
+    dry_run = args.dry_run
+    audio_files = args.audio_files
 
     # Validate all files
     all_errors = []
@@ -188,24 +250,62 @@ if __name__ == "__main__":
             print(error)
         sys.exit(1)
 
-    model_choice = get_user_choice()
-    print(center_text(
-        f"The {model_choice} model was chosen / Le modèle {model_choice} a été choisi."))
+    # Determine model choice
+    if args.model:
+        model_choice = args.model
+    else:
+        model_choice = get_user_model_choice()
+    print(
+        f"The {model_choice} model was chosen / Le modèle {model_choice} a été choisi.")
+
+    # Determine timestamp choice
+    if args.timestamps is not None:
+        timestamp_choice_letter = args.timestamps
+        if timestamp_choice_letter == 'y':
+            timestamp_choice = 0
+        elif timestamp_choice_letter == 'n':
+            timestamp_choice = 1
+        else:  # timestamp_choice_letter == 'b'
+            timestamp_choice = 2
+    else:
+        timestamp_choice = get_user_timestamp_choice()
+    timestamp_txt_list = TIMESTAMP_NAMES[timestamp_choice].split(' / ')
+    print(
+        f"{timestamp_txt_list[0]} was chosen / {timestamp_txt_list[1]} a été choisi.")
 
     if not dry_run:
         print("Loading the model / Chargement du modèle")
         model = whisper.load_model(model_choice)
+        # Suppress the FP16 warning
+        warnings.filterwarnings("ignore",
+                                message="FP16 is not supported on CPU; using FP32 instead",
+                                category=UserWarning)
 
     for audio_file_path in audio_files:
         audio_dir = os.path.dirname(audio_file_path)
         audio_file_name = os.path.basename(audio_file_path)
-        text_file_name = replace_extension(audio_file_name)
+
+        text_file_name = replace_extension_without_timestamps(audio_file_name)
+        text_file_name_timestamp = replace_extension_timestamps(
+            audio_file_name)
+
         text_file_path = os.path.join(audio_dir, text_file_name)
+        text_file_with_timestamps_path = os.path.join(
+            audio_dir, text_file_name_timestamp)
 
         if dry_run:
-            print(center_text(
-                f"Dry run: Would process {audio_file_name} into {text_file_name}"))
-            continue
+            print(f"\nDry run: Processing / Traitement du {audio_file_name}")
+            if timestamp_choice == 0:
+                print(
+                    f"Would create timestamped file / Créerait un fichier horodaté : {text_file_name_timestamp}")
+            elif timestamp_choice == 1:
+                print(
+                    f"Would create simple transcript / Créerait un fichier simple : {text_file_name}")
+            elif timestamp_choice == 2:
+                print(f"Would create both files / Créerait les deux fichiers :")
+                print(f"- {text_file_name}")
+                print(f"- {text_file_name_timestamp}")
+            continue  # Skip actual processing for dry-run
 
         print(center_text(
             f"Processing {audio_file_name} with {model_choice} model / Traitement de {audio_file_name} avec le modèle {model_choice}"))
@@ -219,11 +319,21 @@ if __name__ == "__main__":
         print(center_text(
             f"Transcription finished in / Transcription terminée en {convert(duration)}"))
 
-        with open(text_file_path, 'w', encoding='utf-8') as f:
-            for segment in transcription["segments"]:
-                start = convert(segment['start'])
-                end = convert(segment['end'])
-                f.write(f"{start} - {end}: {segment['text']}\n")
-
-        print(center_text(
-            f"Transcription saved to / Transcription enregistrée dans {text_file_path}"))
+        if timestamp_choice == 0:
+            write_txt_file_with_timestamps(
+                transcription, text_file_with_timestamps_path)
+            print(center_text(
+                f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {text_file_with_timestamps_path}"))
+        elif timestamp_choice == 1:
+            write_txt_file_without_timestamps(transcription, text_file_path)
+            print(center_text(
+                f"Transcription saved to / Transcription enregistrée dans {text_file_path}"))
+        else:
+            write_txt_file_with_timestamps(
+                transcription, text_file_with_timestamps_path)
+            print(center_text(
+                f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {text_file_with_timestamps_path}"))
+            write_txt_file_without_timestamps(transcription, text_file_path)
+            print(center_text(
+                f"Transcription saved to / Transcription enregistrée dans {text_file_path}"))
+            # }}}
