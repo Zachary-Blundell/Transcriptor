@@ -57,7 +57,7 @@ MODEL_OPTIONS_TEXT = textwrap.dedent("""
         12. Plus d'informations (Français)
     """)
 
-valid_audio_extensions = ['.mp3', '.m4a',
+VALID_AUDIO_EXTENSIONS = ['.mp3', '.m4a',
                           '.wav', '.flac', '.ogg', '.aac', '.opus']
 # }}}
 """Functions"""  # {{{
@@ -71,13 +71,13 @@ def check_audio_file(file_path):
             width=50, initial_indent="   ", subsequent_indent="    ")
     if not os.path.isfile(file_path):
         return f"Error: {file_path} is not a file. / Erreur : {file_path} n'est pas un fichier."
-    if not file_path.lower().endswith(tuple(valid_audio_extensions)):
+    if not file_path.lower().endswith(tuple(VALID_AUDIO_EXTENSIONS)):
         error1 = textwrap.fill(
             "Error: File is not a valid audio file type / File n'est pas un type de fichier audio valide.",
             width=50, initial_indent="   ", subsequent_indent="    ")
         error2 = textwrap.fill(
             f"""The valid file types for transcriptor are / Les types de fichiers valides pour le transcriptor sont les suivants : {
-                valid_audio_extensions}""",
+                VALID_AUDIO_EXTENSIONS}""",
             width=50, initial_indent="   ", subsequent_indent="    ")
         return error1 + "\n" + error2
     return None
