@@ -6,6 +6,8 @@ import whisper
 import shutil
 import warnings
 import argparse
+import datetime
+
 
 """Constants"""  # {{{
 MODEL_NAMES = [
@@ -61,6 +63,48 @@ VALID_AUDIO_EXTENSIONS = ['.mp3', '.m4a',
                           '.wav', '.flac', '.ogg', '.aac', '.opus']
 # }}}
 """Functions"""  # {{{
+
+
+def get_log_filepath():
+    # Figure out where to store logs
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    logs_dir = os.path.join(script_dir, "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+
+    # Create a filename with date/time, e.g. "2025-02-25_14-05-42_log.txt"
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_filename = f"{now_str}_transcriptor_log.txt"
+    log_filepath = os.path.join(logs_dir, log_filename)
+    return log_filepath
+
+
+def write_log(log_filepath, message):
+    with open(log_filepath, 'a', encoding='utf-8') as f:
+        f.write(message + '\n')
+
+
+def print_and_log(message, log_filepath):
+    print(message)
+    write_log(log_filepath, message)
+
+
+def validate_audio_files(audio_files, log_filepath=None):
+    """
+    Check each file in audio_files to see if it is valid.
+    Logs and returns a list of errors found. If errors exist,
+    the caller can decide whether to exit or raise an exception.
+    """
+    all_errors = []
+    for file in audio_files:
+        error = check_audio_file(file)
+        if error:
+            all_errors.append(error)
+
+    if all_errors and log_filepath and logsOn:
+        for err in all_errors:
+            write_log(log_filepath, f"Error: {err}")
+
+    return all_errors
 
 
 def check_audio_file(file_path):
@@ -223,28 +267,31 @@ def get_user_model_choice():
 
 
 if __name__ == "__main__":
+    # Get a new log file path each time the script runs
+    log_filepath = get_log_filepath()
+
     parser = argparse.ArgumentParser(
         description="Transcribe audio files using Whisper models.")
     parser.add_argument('audio_files', nargs='+',
                         help='Audio file(s) to transcribe')
-    parser.add_argument('--dry-run', action='store_true',
+    parser.add_argument('-d, --dry-run', action='store_true',
                         help='Simulate processing without writing files')
-    parser.add_argument('--model', choices=MODEL_NAMES,
+    parser.add_argument('-m, --model', choices=MODEL_NAMES,
                         help='Specify the Whisper model to use (by name)')
-    parser.add_argument('--timestamps', choices=['y', 'n', 'b'],
+    parser.add_argument('-t, --timestamps', choices=['y', 'n', 'b'],
                         help='Timestamp option: y=timestamps only, n=no timestamps, b=both')
+    parser.add_argument('-l, --log', action='store_true',
+                        help='Used to enable logging info to a log file.')
     args = parser.parse_args()
 
     dry_run = args.dry_run
+    logsOn = False
+    if not dry_run:
+        logsOn = args.log
     audio_files = args.audio_files
 
     # Validate all files
-    all_errors = []
-    for file in audio_files:
-        error = check_audio_file(file)
-        if error:
-            all_errors.append(error)
-
+    all_errors = validate_audio_files(audio_files, log_filepath)
     if all_errors:
         for error in all_errors:
             print(error)
@@ -255,8 +302,8 @@ if __name__ == "__main__":
         model_choice = args.model
     else:
         model_choice = get_user_model_choice()
-    print(
-        f"The {model_choice} model was chosen / Le modèle {model_choice} a été choisi.")
+    print_and_log(
+        f"The {model_choice} model was chosen / Le modèle {model_choice} a été choisi.", log_filepath)
 
     # Determine timestamp choice
     if args.timestamps is not None:
@@ -270,11 +317,11 @@ if __name__ == "__main__":
     else:
         timestamp_choice = get_user_timestamp_choice()
     timestamp_txt_list = TIMESTAMP_NAMES[timestamp_choice].split(' / ')
-    print(
-        f"{timestamp_txt_list[0]} was chosen / {timestamp_txt_list[1]} a été choisi.")
+    print_and_log(
+        f"{timestamp_txt_list[0]} was chosen / {timestamp_txt_list[1]} a été choisi.", log_filepath)
 
     if not dry_run:
-        print("Loading the model / Chargement du modèle")
+        print(center_text("Loading the model / Chargement du modèle"))
         model = whisper.load_model(model_choice)
         # Suppress the FP16 warning
         warnings.filterwarnings("ignore",
@@ -307,33 +354,35 @@ if __name__ == "__main__":
                 print(f"- {text_file_name_timestamp}")
             continue  # Skip actual processing for dry-run
 
-        print(center_text(
-            f"Processing {audio_file_name} with {model_choice} model / Traitement de {audio_file_name} avec le modèle {model_choice}"))
-        start_time = time.time()
+        print_and_log(f"\nProcessing {
+                      audio_file_name} / Traitement de {audio_file_name}", log_filepath)
+        start_time = time.monotonic()
         print(center_text("Transcription started / Transcription commencée"))
 
         transcription = model.transcribe(audio_file_path)
 
-        end_time = time.time()
+        end_time = time.monotonic()
         duration = end_time - start_time
-        print(center_text(
-            f"Transcription finished in / Transcription terminée en {convert(duration)}"))
+        print_and_log(
+            f"Transcription finished in / Transcription terminée en {convert(duration)}", log_filepath)
 
         if timestamp_choice == 0:
             write_txt_file_with_timestamps(
                 transcription, text_file_with_timestamps_path)
-            print(center_text(
-                f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {text_file_with_timestamps_path}"))
+            print_and_log(f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {
+                          text_file_with_timestamps_path}\n", log_filepath)
         elif timestamp_choice == 1:
             write_txt_file_without_timestamps(transcription, text_file_path)
-            print(center_text(
-                f"Transcription saved to / Transcription enregistrée dans {text_file_path}"))
+            print_and_log(
+                f"Transcription saved to / Transcription enregistrée dans {text_file_path}\n", log_filepath)
         else:
             write_txt_file_with_timestamps(
                 transcription, text_file_with_timestamps_path)
-            print(center_text(
-                f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {text_file_with_timestamps_path}"))
+            print_and_log(
+                f"Transcription with timestamps saved to / Transcription avec horodatages enregistrée dans {text_file_with_timestamps_path}", log_filepath)
             write_txt_file_without_timestamps(transcription, text_file_path)
-            print(center_text(
-                f"Transcription saved to / Transcription enregistrée dans {text_file_path}"))
-            # }}}
+            print_and_log(
+                f"Transcription saved to / Transcription enregistrée dans {text_file_path}\n", log_filepath)
+        print_and_log({"> " + "-" * 80}, log_filepath)
+        print()
+# }}}
