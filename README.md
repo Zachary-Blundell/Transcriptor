@@ -70,25 +70,47 @@ If the error message states No module named 'setuptools_rust', install setuptool
 To run the script, use the following command:
 
 ```bash
-python transcriptor.py <audio_file.m4a> [--dry-run]
+python transcriptor.py <audio_file.m4a> [--dry-run] [--model MODEL_NAME] [--timestamps {y,n,b}]
 ```
 
-- `<audio_file.m4a>`: Path to the audio file you want to transcribe.
-- `--dry-run` (optional): Runs the script without actually performing the transcription, useful for testing.
+Where:
+
+- `<audio_file.m4a>`: Path to the audio file(s) you want to transcribe.
+- `--dry-run` (optional): Executes a simulation without actually performing the transcription, useful for testing.
+- `--model MODEL_NAME` (optional): Specifies the Whisper model to use. Accepted values are:  
+  `tiny`, `base`, `small`, `medium`, `large`, `turbo`, `tiny.en`, `base.en`, `small.en`, `medium.en`.  
+  *If omitted, you’ll be prompted to select a model interactively.*
+- `--timestamps {y,n,b}` (optional): Sets the timestamp mode. Options are:  
+  - `y`: Timestamps only  
+  - `n`: No timestamps  
+  - `b`: Both timestamps and non-timestamped transcription  
+  *If not provided, you’ll be prompted to choose a timestamp option interactively.*
 
 ### Example
+
+**Interactive Mode (using menus):**
 
 ```bash
 python transcriptor.py example_audio.m4a
 ```
 
-This will transcribe `example_audio.m4a` using the selected Whisper model and save the transcription to a text file with the same name.
+This command will prompt you to select a model and a timestamp option interactively, then transcribe `example_audio.m4a` and save the output as `example_audio.txt`.
 
-### Selecting a Model
+**Bypassing the Menus:**
 
-After running the script, you will be prompted to choose a model:
-
+```bash
+python transcriptor.py example_audio.m4a --model small --timestamps b
 ```
+
+This command bypasses the menus by directly selecting the `small` model and enabling both types of timestamps.
+
+### Interactive Selections
+
+#### Model Selection
+
+If you omit the `--model` flag, the script will display:
+
+```sh
 Please choose a model / Veuillez choisir un modèle :
     1. tiny
     2. base
@@ -104,16 +126,50 @@ Please choose a model / Veuillez choisir un modèle :
     12. Plus d'informations (Français)
 ```
 
-Enter the number corresponding to the desired model to proceed.
+Enter the corresponding number to choose the desired model.
 
 ### Information Options
 
 - `11`: Displays detailed information about the models in English.
 - `12`: Displays detailed information about the models in French.
 
+#### Timestamp Selection
+
+If you omit the `--timestamps` flag, you will be prompted to select your timestamp option (y, n, or b) interactively.
+
+### Help
+
+Use the `--help` or `-h` flag to display detailed usage information:
+
+```bash
+python transcriptor.py --help
+```
+
+This displays:
+
+```sh
+usage: transcriptor.py [-h] [--dry-run]
+                       [--model {tiny,base,small,medium,large,turbo,tiny.en,base.en,small.en,medium.en}]
+                       [--timestamps {y,n,b}]
+                       audio_files [audio_files ...]
+
+Transcribe audio files using Whisper models.
+
+positional arguments:
+  audio_files           Audio file(s) to transcribe
+
+options:
+  -h, --help            show this help message and exit
+  --dry-run             Simulate processing without writing files
+  --model {tiny,base,small,medium,large,turbo,tiny.en,base.en,small.en,medium.en}
+                        Specify the Whisper model to use (by name)
+  --timestamps {y,n,b}  Timestamp option: y=timestamps only, n=no
+                        timestamps, b=both
+```
+
 ### Output
 
-The script generates a text file with the transcribed content, named after the input audio file but with a `.txt` extension. For example, if the input file is `example_audio.m4a`, the output will be `example_audio.txt`.
+The script outputs one or multiple text file(s) containing the transcribed content. The file is named after the input audio file, replacing its extension with `.txt` for without timestamps text (e.g., `example_audio.m4a` becomes `example_audio.txt`) and `_timestamps.txt` with timestamps text.
 
 ## Notes
 
