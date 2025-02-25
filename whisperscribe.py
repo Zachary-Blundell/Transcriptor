@@ -275,13 +275,13 @@ def argument_parser():
         description="Transcribe audio files using Whisper models.")
     parser.add_argument('audio_files', nargs='+',
                         help='Audio file(s) to transcribe')
-    parser.add_argument('-d, --dry-run', action='store_true',
+    parser.add_argument('-d', '--dry-run', action='store_true',
                         help='Simulate processing without writing files')
-    parser.add_argument('-m, --model', choices=MODEL_NAMES,
+    parser.add_argument('-m', '--model', choices=MODEL_NAMES,
                         help='Specify the Whisper model to use (by name)')
-    parser.add_argument('-t, --timestamps', choices=['y', 'n', 'b'],
+    parser.add_argument('-t', '--timestamps', choices=['y', 'n', 'b'],
                         help='Timestamp option: y=timestamps only, n=no timestamps, b=both')
-    parser.add_argument('-l, --log', action='store_true',
+    parser.add_argument('-l', '--log', action='store_true',
                         help='Used to enable logging info to a log file.')
     return parser.parse_args()
 
@@ -296,6 +296,8 @@ if __name__ == "__main__":
 
     # Get the command arguments
     args = argument_parser()
+
+    print(args)
 
     audio_files = args.audio_files
     dry_run = args.dry_run
@@ -382,6 +384,6 @@ if __name__ == "__main__":
             write_txt_file_without_timestamps(transcription, text_file_path)
             print_and_log(
                 f"Transcription saved to / Transcription enregistrée dans {text_file_path}\n", log_filepath)
-        print_and_log({"> " + "-" * 80}, log_filepath)
+        print("> " + "-" * 80)
         print()
 # }}}
