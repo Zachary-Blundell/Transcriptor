@@ -1,8 +1,8 @@
-# Transcriptor Script
+# WhisperScribe Script
 
 🇬🇧 English | 🇫🇷[Lire en français](README_fr.md)
 
-`transcriptor.py` is a Python script for transcribing audio files using the Whisper model created by OpenAI. It supports multiple model sizes and offers options for both multilingual and English-only transcriptions.
+`whisperscribe.py` is a Python script for transcribing audio files using the Whisper model created by OpenAI. It supports multiple model sizes and offers options for both multilingual and English-only transcriptions.
 More info on openai-whisper can be found [here (pypi.org)](https://pypi.org/project/openai-whisper/) and [here (github)](https://github.com/openai/whisper)
 
 Valid audio extensions: `.mp3`, `.m4a`, `.wav`, `.flac`, `.ogg`, `.aac`, `.opus`
@@ -21,7 +21,7 @@ You only need to install the `whisper` package separately because it's not inclu
 
 ## Installation
 
-1. Clone this repository or download the `transcriptor.py` script.
+1. Clone this repository or download the `whisperscribe.py` script.
 2. Ensure you have the necessary Python version and install the required packages:
 
    ```bash
@@ -69,7 +69,7 @@ If the error message states No module named 'setuptools_rust', install setuptool
 To run the script, use the following command:
 
 ```bash
-python transcriptor.py <audio_file.m4a> [--dry-run] [--model MODEL_NAME] [--timestamps {y,n,b}]
+python whisperscribe.py <audio_file.m4a> [--dry-run] [--model MODEL_NAME] [--timestamps {y,n,b}]
 ```
 
 Where:
@@ -90,7 +90,7 @@ Where:
 **Interactive Mode (using menus):**
 
 ```bash
-python transcriptor.py example_audio.m4a
+python whisperscribe.py example_audio.m4a
 ```
 
 This command will prompt you to select a model and a timestamp option interactively, then transcribe `example_audio.m4a` and save the output as `example_audio.txt`.
@@ -98,7 +98,7 @@ This command will prompt you to select a model and a timestamp option interactiv
 **Bypassing the Menus:**
 
 ```bash
-python transcriptor.py example_audio.m4a --model small --timestamps b
+python whisperscribe.py example_audio.m4a --model small --timestamps b
 ```
 
 This command bypasses the menus by directly selecting the `small` model and enabling both types of timestamps.
@@ -141,15 +141,14 @@ If you omit the `--timestamps` flag, you will be prompted to select your timesta
 Use the `--help` or `-h` flag to display detailed usage information:
 
 ```bash
-python transcriptor.py --help
+python whisperscribe.py --help
 ```
 
 This displays:
 
-```sh
-usage: transcriptor.py [-h] [--dry-run]
-                       [--model {tiny,base,small,medium,large,turbo,tiny.en,base.en,small.en,medium.en}]
-                       [--timestamps {y,n,b}]
+```txt
+usage: whisperscribe.py [-h] [-d, --dry-run] [-m, --model {tiny,base,small,medium,large,turbo,tiny.en,base.en,small.en,medium.en}]
+                       [-t, --timestamps {y,n,b}] [-l, --log]
                        audio_files [audio_files ...]
 
 Transcribe audio files using Whisper models.
@@ -159,11 +158,12 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  --dry-run             Simulate processing without writing files
-  --model {tiny,base,small,medium,large,turbo,tiny.en,base.en,small.en,medium.en}
+  -d, --dry-run         Simulate processing without writing files
+  -m, --model {tiny,base,small,medium,large,turbo,tiny.en,base.en,small.en,medium.en}
                         Specify the Whisper model to use (by name)
-  --timestamps {y,n,b}  Timestamp option: y=timestamps only, n=no
-                        timestamps, b=both
+  -t, --timestamps {y,n,b}
+                        Timestamp option: y=timestamps only, n=no timestamps, b=both
+  -l, --log             Used to enable logging info to a log file.
 ```
 
 ### Output

@@ -44,9 +44,9 @@ INFO_TEXTS = {
 TIMESTAMP_OPTIONS_TEXT = textwrap.dedent(f"""
    Please choose if you would like to add timestamps / Veuillez indiquer si vous souhaitez ajouter des horodatages :
         q. Exit / Sortie
-        y. {TIMESTAMP_NAMES[0]}
-        n. {TIMESTAMP_NAMES[1]}
-        b. {TIMESTAMP_NAMES[2]}
+        y. {TIMESTAMP_NAMES['y']}
+        n. {TIMESTAMP_NAMES['n']}
+        b. {TIMESTAMP_NAMES['b']}
     """)
 
 MODEL_OPTIONS_TEXT = textwrap.dedent("""
@@ -80,7 +80,7 @@ def get_log_filepath():
 
     # Create a filename with date/time, e.g. "2025-02-25_14-05-42_log.txt"
     now_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_filename = f"{now_str}_transcriptor_log.txt"
+    log_filename = f"{now_str}_whisperscribe_log.txt"
     log_filepath = os.path.join(logs_dir, log_filename)
     return log_filepath
 
@@ -127,7 +127,7 @@ def check_audio_file(file_path):
             "Error: File is not a valid audio file type / File n'est pas un type de fichier audio valide.",
             width=50, initial_indent="   ", subsequent_indent="    ")
         error2 = textwrap.fill(
-            f"""The valid file types for transcriptor are / Les types de fichiers valides pour le transcriptor sont les suivants : {
+            f"""The valid file types for whisperscribe are / Les types de fichiers valides pour le whisperscribe sont les suivants : {
                 VALID_AUDIO_EXTENSIONS}""",
             width=50, initial_indent="   ", subsequent_indent="    ")
         return error1 + "\n" + error2
